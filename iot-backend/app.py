@@ -1,9 +1,32 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, make_response
+from flask_cors import CORS, cross_origin
+
+from supertokens_python import get_all_cors_headers
+
 import requests
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
+
+CORS(app)
+    #   allow_headers=["Content-Type"] + ["anti-csrf", "authorization", "st-auth-mode", "rid", "fdi-version"])
+# app.config['CORS_HEADERS'] = 'Content-Type'
+
+@app.route("/")
+@cross_origin()
+def hello():
+    return "Hello, World!"
+
+
+@app.after_request
+def after_request(response):
+#   response.headers.add('Access-Control-Allow-Origin', 'http://localhost:8080')
+  response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+  response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+  response.headers.add('Access-Control-Allow-Credentials', 'true')
+  return response
+
 
 locations = {
     'Kendeda': {
@@ -78,7 +101,7 @@ def compute_delta(location, field, indoor_sensor_name, outdoor_sensor_name):
 
     indoor_data = fetch_data_from_thingspeak(indoor_channel_id, field)
     outdoor_data = fetch_data_from_thingspeak(outdoor_channel_id, field)
-    print(indoor_data, outdoor_data)
+    # print(indoor_data, outdoor_data)
 
     start_date = max(indoor_data['created_at'].min(), outdoor_data['created_at'].min())
     end_date = min(indoor_data['created_at'].max(), outdoor_data['created_at'].max())
@@ -96,6 +119,7 @@ def compute_delta(location, field, indoor_sensor_name, outdoor_sensor_name):
     return merged_data
 
 @app.route('/api/data/<string:location>/<string:sensor_type>/<string:indoor_or_outdoor>/<string:sensor_name>')
+@cross_origin()
 def get_single_sensor_data(location, sensor_type, indoor_or_outdoor, sensor_name):
     if location not in locations:
         return jsonify({'error': 'Invalid location'}), 400
@@ -118,10 +142,12 @@ def get_single_sensor_data(location, sensor_type, indoor_or_outdoor, sensor_name
 
     return jsonify({
         'timestamps': data['created_at'].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
-        'values': data['value'].tolist()
-    })
+        'values': data['value'].tolist(),
+    },
+    200)
 
 @app.route('/api/delta/<string:location>/<string:sensor_type>')
+@cross_origin()
 def get_delta(location, sensor_type):
     if location not in locations:
         return jsonify({'error': 'Invalid location'}), 400
@@ -151,7 +177,8 @@ def get_delta(location, sensor_type):
         'indoor_value': merged_data['value_indoor'].tolist(),
         'outdoor_value': merged_data['value_outdoor'].tolist(),
         'values': merged_data['delta'].tolist()
-    })
+    },
+    200)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
