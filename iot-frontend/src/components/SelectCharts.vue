@@ -1,5 +1,4 @@
 <template>
-  <h1>Sensor Data Charts</h1>
   <!-- Overall Chart Container -->
   <div class="container"> 
       <!-- Left Sidebar -->
@@ -106,11 +105,7 @@
 
       <!-- Main Content Area -->
       <div class="main-chart relative">
-          <!-- Some old stuff
-          <div v-if="isLoading" class="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
-              <div class ="loader"></div>
-          </div> -->
-          <div ref="chartContainer" id="chart2"  style="width: 100%; height: 400px;"></div>
+          <div ref="chartContainer" id="chart2"  style="width: 100%; height: 300px;"></div>
       </div>
   </div>
 </template>
@@ -199,6 +194,10 @@ export default {
         },
         tooltip: {
           trigger: 'axis',
+        },
+        legend: {
+          data: [],
+          top: 'bottom',
         },
         xAxis: {
           type: 'category',
@@ -352,9 +351,15 @@ export default {
 
     const updateChart = (timestamps, series) => {
       chart.clear();
+      const legendData = series.map((item) => item.name); // Extract names for legend
+
       const option = {
         tooltip: {
           trigger: 'axis',
+        },
+        legend: {
+          data: legendData, // Use series names for legend
+          top: 'bottom',
         },
         xAxis: {
           type: 'category',
@@ -442,7 +447,6 @@ export default {
 <style scoped>
 .container {
   display: flex;
-  height: screen;
   padding: 20px;
   background: #ffffff;
   border-radius: 1% / 5%;
@@ -453,26 +457,23 @@ export default {
   text-align: left;
 }
 .sidebar {
+  position: relative;
+  top: 0px;
+  width: 20%;
   border-right: 0px solid #514d4d;  /* Slate 300 equivalent */
-  padding: 1%;
+  padding: 1px;
 }
 .main-chart {
   position: relative;
-  flex: 1;
+  width: 80%;
   border: 2px solid #514d4d;
   align-items: start;
-}
-.absolute {
-  z-index: 1000; /* Ensure it appears above other elements */
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  margin-left: auto;
+  margin-right: 0;
+  padding: 20px;
 }
 select {
   margin-right: 10px;
 }
-
 
 </style>
