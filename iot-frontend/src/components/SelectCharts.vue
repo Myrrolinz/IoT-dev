@@ -1,59 +1,124 @@
 <template>
   <h1>Sensor Data Charts</h1>
-  <div class="container">
-    <div class="selectors">
-      <label for="location-select">Location:</label>
-      <select id="location-select" v-model="selectedLocation" @change="() => { updateSensorOptions(); fetchData(); }">
-        <option v-for="location in locations" :key="location" :value="location">
-          {{ location }}
-        </option>
-      </select>
+  <!-- Overall Chart Container -->
+  <div class="container"> 
+      <!-- Left Sidebar -->
+      <div class="sidebar">
+          <h3 class="text-md font-semibold text-center p-4">Sensor Controls</h3>
+          <div>
+          <!-- Location Selection -->
+              <div class="selectors">
+                  <label for="location-select" class="text-sm font-medium">
+                      Location
+                  </label>
+                  <select
+                      id="location-select"
+                      v-model="selectedLocation"
+                      @change="() => { updateSensorOptions(); fetchData(); }"
+                      class="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500"
+                      >  
+                      <option v-for="location in locations" :key="location" :value="location">
+                      {{ location }}
+                      </option>
+                  </select>
+              </div>
 
-      <label for="sensor-select">Sensor Type:</label>
-      <select id="sensor-select" v-model="selectedSensor" @change="fetchData">
-        <option v-for="sensor in sensors" :key="sensor" :value="sensor">
-          {{ sensor }}
-        </option>
-      </select>
+              <!-- Sensor Type -->
+              <div class="selectors">
+                  <label class="block text-sm font-medium">
+                      Sensor Type
+                  </label>
+                  <select
+                      v-model="selectedSensor"
+                      @change="fetchData"
+                      class="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  >
+                      <option v-for="sensor in sensors" :key="sensor" :value="sensor">
+                          {{ sensor.charAt(0).toUpperCase() + sensor.slice(1) }}
+                      </option>
+                  </select>
+              </div>
 
-      <label for="indoor-sensor-select">Indoor Sensor:</label>
-      <select id="indoor-sensor-select" v-model="selectedIndoorSensor" @change="fetchData">
-        <option value="None">None</option>
-        <option v-for="indoor in indoorSensorOptions" :key="indoor" :value="indoor">
-          {{ indoor }}
-        </option>
-      </select>
+              <!-- Indoor Sensor -->
+              <div class="selectors">
+                  <label class="block text-sm font-medium text-gray-700">
+                      Indoor Sensor
+                  </label>
+                  <select
+                      v-model="selectedIndoorSensor"
+                      @change="fetchData"
+                      class="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                      <option value="None">None</option>
+                      <option v-for="sensor in indoorSensorOptions" :key="sensor" :value="sensor">
+                          {{ sensor }}
+                      </option>
+                  </select>
+              </div>
 
-      <label for="outdoor-sensor-select">Outdoor Sensor:</label>
-      <select id="outdoor-sensor-select" v-model="selectedOutdoorSensor" @change="fetchData">
-        <option value="None">None</option>
-        <option v-for="outdoor in outdoorSensorOptions" :key="outdoor" :value="outdoor">
-          {{ outdoor }}
-        </option>
-      </select>
+              <!-- Outdoor Sensor -->
+              <div class="selectors">
+                  <label class="block text-sm font-medium text-gray-700">
+                      Outdoor Sensor
+                  </label>
+                  <select
+                      v-model="selectedOutdoorSensor"
+                      @change="fetchData"
+                      class="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  >
+                      <option value="None">None</option>
+                      <option v-for="sensor in outdoorSensorOptions" :key="sensor" :value="sensor">
+                          {{ sensor }}
+                      </option>
+                  </select>
+              </div>
 
-      <!-- Delta checkbox -->
-      <div>
-        <input type="checkbox" id="delta-checkbox" v-model="showDelta" @change="fetchData"/>
-        <label for="delta-checkbox">Show Delta</label>
+              <!-- Time Range -->
+              <div class="selectors">
+                  <label class="block text-sm font-medium text-gray-700">
+                      Time Range
+                  </label>
+                  <select
+                      v-model="selectedRangeDays"
+                      @change="fetchData"
+                      class="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  >
+                      <option v-for="days in possibleRanges" :key="days" :value="days">
+                          {{ days }} {{ days === 1 ? 'day' : 'days' }}
+                      </option>
+                  </select>
+              </div>
+
+              <!-- Delta Checkbox -->
+              <div class="text-center">
+                  <label class="flex items-center space-x-2 cursor-pointer">
+                      <input
+                      type="checkbox"
+                      v-model="showDelta"
+                      @change="fetchData"
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      >
+                      <span class="text-sm font-medium text-gray-700">Show Delta</span>
+                  </label>
+              </div>
+          </div>
       </div>
 
-      <!-- Range selection -->
-      <label for="range-select">Time Range (days):</label>
-      <select id="range-select" v-model="selectedRangeDays" @change="fetchData">
-        <option v-for="d in possibleRanges" :key="d" :value="d">{{ d }} days</option>
-      </select>
-    </div>
-
-    <div id="chart" style="width: 100%; height: 400px;"></div>
+      <!-- Main Content Area -->
+      <div class="main-chart relative">
+          <!-- Some old stuff
+          <div v-if="isLoading" class="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
+              <div class ="loader"></div>
+          </div> -->
+          <div ref="chartContainer" id="chart2"  style="width: 100%; height: 400px;"></div>
+      </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import * as echarts from 'echarts';
 import axios from 'axios';
-import apiClient from '@/services/api.js';
 
 export default {
   props: {
@@ -87,15 +152,25 @@ export default {
     const selectedIndoorSensor = ref(props.initialIndoorSensor);
     const selectedOutdoorSensor = ref(props.initialOutdoorSensor);
 
-
     // Delta checkbox
     const showDelta = ref(true); // default show delta
 
     // Time range selection
-    const possibleRanges = ref([1, 3, 7, 14, 30, 60]);
+    const possibleRanges = ref([1, 3, 7, 14, 30]);
     const selectedRangeDays = ref(7); // default 7 days
 
+    // Loading
+    const isLoading = ref(false);
+
     let chart = null;
+
+    watch(isLoading, (newValue) => {
+      if (newValue) {
+          document.body.style.cursor = 'wait';  
+      } else {
+          document.body.style.cursor = 'default'; 
+      }
+    });
 
     const updateSensorOptions = () => {
       if (!selectedLocation.value || !locationSensorMap.value[selectedLocation.value]) {
@@ -107,25 +182,17 @@ export default {
       indoorSensorOptions.value = locationSensorMap.value[selectedLocation.value].indoor || [];
       outdoorSensorOptions.value = locationSensorMap.value[selectedLocation.value].outdoor || [];
 
-      // Special case for "East Point"
-      if (selectedLocation.value === 'East Point') {
-        selectedIndoorSensor.value = indoorSensorOptions.value[0] || 'None';
-        selectedOutdoorSensor.value = outdoorSensorOptions.value[0] || 'None';
-        showDelta.value = false; // Disable delta for "East Point"
-      } else {
-        // Reset default behavior for other locations
-        if (!indoorSensorOptions.value.includes(selectedIndoorSensor.value) && selectedIndoorSensor.value !== 'None') {
-          selectedIndoorSensor.value = 'None';
-        }
-        if (!outdoorSensorOptions.value.includes(selectedOutdoorSensor.value) && selectedOutdoorSensor.value !== 'None') {
-          selectedOutdoorSensor.value = 'None';
-        }
-        showDelta.value = true; // Enable delta for other locations by default
+      // Reset selected sensors if they're no longer in the options
+      if (!indoorSensorOptions.value.includes(selectedIndoorSensor.value) && selectedIndoorSensor.value !== 'None') {
+        selectedIndoorSensor.value = 'None';
+      }
+      if (!outdoorSensorOptions.value.includes(selectedOutdoorSensor.value) && selectedOutdoorSensor.value !== 'None') {
+        selectedOutdoorSensor.value = 'None';
       }
     };
 
     const initChart = () => {
-      chart = echarts.init(document.getElementById('chart'));
+      chart = echarts.init(document.getElementById('chart2'));
       const option = {
         title: {
           text: 'Sensor Data',
@@ -166,9 +233,12 @@ export default {
     };
 
     const fetchData = async () => {
-      if (!selectedLocation.value) {
+      if (!selectedLocation.value) { 
         return;
       }
+
+      //console.log('Setting isLoading to true'); // Debugging
+      isLoading.value = true;
 
       let timestamps = null;
       const series = [];
@@ -193,7 +263,10 @@ export default {
 
         const apiUrl = `/api/delta/${loc}/${sensorType}?indoor_sensor=${indoorParam}&outdoor_sensor=${outdoorParam}&range=${rangeStr}`;
         try {
-          const response = await apiClient.get(apiUrl);
+          
+          //console.log("Starting Fetch")
+          const response = await axios.get(apiUrl);
+          //console.log('Fetch success:', response.data);
           const { timestamps: newTimestamps, indoor_value, outdoor_value, values: delta_values } = response.data;
           timestamps = newTimestamps;
 
@@ -225,14 +298,17 @@ export default {
             smooth: true,
           });
         } catch (error) {
-          console.error('Error fetching delta data:', error);
+          // console.error('Error fetching delta data:', error);
+        } finally {
+          // console.log('Setting isLoading to false 1')
+          isLoading.value = false;
         }
       } else {
         // Delta not shown, so we only show raw indoor/outdoor data if selected
         if (selectedIndoorSensor.value !== 'None') {
           const indoorUrl = `/api/data/${loc}/${sensorType}/indoor/${selectedIndoorSensor.value}?range=${rangeStr}`;
           try {
-            const response = await apiClient.get(indoorUrl);
+            const response = await axios.get(indoorUrl);
             const { timestamps: indoorTimestamps, values: indoorValues } = response.data;
             if (!timestamps) {
               timestamps = indoorTimestamps;
@@ -251,7 +327,7 @@ export default {
         if (selectedOutdoorSensor.value !== 'None') {
           const outdoorUrl = `/api/data/${loc}/${sensorType}/outdoor/${selectedOutdoorSensor.value}?range=${rangeStr}`;
           try {
-            const response = await apiClient.get(outdoorUrl);
+            const response = await axios.get(outdoorUrl);
             const { timestamps: outdoorTimestamps, values: outdoorValues } = response.data;
             if (!timestamps) {
               timestamps = outdoorTimestamps;
@@ -263,7 +339,10 @@ export default {
               smooth: true,
             });
           } catch (error) {
-            console.error('Error fetching outdoor data:', error);
+          //   console.error('Error fetching outdoor data:', error);
+          } finally {
+              // console.log('Setting isLoading to false'); // Debugging
+              isLoading.value = false;
           }
         }
       }
@@ -353,7 +432,8 @@ export default {
       selectedRangeDays,
       updateSensorOptions,
       fetchData,
-      updateSensorsFromParent
+      updateSensorsFromParent,
+      isLoading
     };
   },
 };
@@ -361,12 +441,38 @@ export default {
 
 <style scoped>
 .container {
+  display: flex;
+  height: screen;
   padding: 20px;
+  background: #ffffff;
+  border-radius: 1% / 5%;
 }
 .selectors {
-  margin-bottom: 20px;
+  margin-bottom: 10%;
+  margin-right: 1%;
+  text-align: left;
+}
+.sidebar {
+  border-right: 0px solid #514d4d;  /* Slate 300 equivalent */
+  padding: 1%;
+}
+.main-chart {
+  position: relative;
+  flex: 1;
+  border: 2px solid #514d4d;
+  align-items: start;
+}
+.absolute {
+  z-index: 1000; /* Ensure it appears above other elements */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 select {
   margin-right: 10px;
 }
+
+
 </style>
