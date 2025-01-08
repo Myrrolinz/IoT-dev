@@ -18,7 +18,7 @@ const routes = [
     path: '/maps',
     name: 'MapAndChartsView',
     component: MapAndChartsView
-  }
+  },
 ];
 
 const router = createRouter({
