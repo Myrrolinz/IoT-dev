@@ -73,20 +73,40 @@ export default {
         attribution: 'Map data © OpenStreetMap contributors'
       }).addTo(map);
 
+      // Define a custom icon 20250201_add_location_icon
+      const customIcon = L.icon({
+        iconUrl: require('@/assets/location_1024px.png'), // Path to your marker icon
+        iconSize: [24, 24], // Size of the icon
+        iconAnchor: [12, 12], // Anchor point of the icon
+        popupAnchor: [0, -12] // Popup position relative to the icon
+      });
+
       for (const locName in locationData.value) {
         const { latitude, longitude } = locationData.value[locName].coordinates;
-        const marker = L.circleMarker([latitude, longitude], {
-          radius: 8, 
-          color: 'blue', 
-          fillColor: 'blue', 
-          fillOpacity: 0.2, 
-        }).addTo(map);
+
+        // const marker = L.circleMarker([latitude, longitude], {
+        //   radius: 8, 
+        //   color: 'blue', 
+        //   fillColor: 'blue', 
+        //   fillOpacity: 0.2, 
+        // }).addTo(map);
+        // marker.on('mouseover', () => {
+        //   marker.setRadius(12);
+        // });
+        // marker.on('mouseout', () => {
+        //   marker.setRadius(8);
+        // });
+
+        // Add a marker with the custom icon 2025
+        const marker = L.marker([latitude, longitude], { icon: customIcon }).addTo(map);
         marker.on('mouseover', () => {
-          marker.setRadius(12);
+          marker.setOpacity(0.7); // Highlight effect
         });
-        marker.on('mouseout', () =>{
-          marker.setRadius(8);
+
+        marker.on('mouseout', () => {
+          marker.setOpacity(1); // Reset opacity
         });
+
         marker.on('click', () => {
           selectedLocationFromMap.value = locName;
           indoorSensors.value = locationData.value[locName].indoor;
@@ -100,7 +120,7 @@ export default {
 
     const applySensorSelection = () => {
       showSidePanel.value = false;
-      
+
       if (selectChartsComponent.value) {
         selectChartsComponent.value.updateSensorsFromParent(
           selectedLocationFromMap.value,
