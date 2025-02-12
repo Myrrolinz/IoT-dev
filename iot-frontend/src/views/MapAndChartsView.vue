@@ -90,6 +90,10 @@ import L from 'leaflet';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 import SelectCharts from '../components/SelectCharts.vue';
+import 'leaflet.markercluster'; // added on 02/11/2025 feature/add_marker_clustering
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+
 
 export default {
   components: {
@@ -113,61 +117,84 @@ export default {
       locationData.value = response.data;
     };
 
+    // const initMap = () => {
+    //   // const map = L.map(mapContainer.value).setView([33.78, -84.4], 10); // feature/add_zoom_adjustment
+    //   const map = L.map(mapContainer.value);
+    //   const bounds = [];
+
+    //   for (const locName in locationData.value) {
+    //     const { latitude, longitude } = locationData.value[locName].coordinates;
+    //     bounds.push([latitude, longitude]);
+    //   }
+
+    //   if (bounds.length > 0) {
+    //     map.fitBounds(bounds); // Adjusts the view to contain all markers
+    //   } else {
+    //     map.setView([33.78, -84.4], 12); // Fallback default view
+    //   }
+    //   //end modif - feature/add_zoom_adjustment
+    //   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    //     attribution: 'Map data © OpenStreetMap contributors'
+    //   }).addTo(map);
+
+    //   // Define a custom icon 20250201_add_location_icon
+    //   const customIcon = L.icon({
+    //     iconUrl: require('@/assets/location_1024px.png'), // Path to your marker icon
+    //     iconSize: [24, 24], // Size of the icon
+    //     iconAnchor: [12, 12], // Anchor point of the icon
+    //     popupAnchor: [0, -12] // Popup position relative to the icon
+    //   });
+
+    //   for (const locName in locationData.value) {
+    //     const { latitude, longitude } = locationData.value[locName].coordinates;
+
+    //     // Add a marker with the custom icon 2025
+    //     const marker = L.marker([latitude, longitude], { icon: customIcon }).addTo(map);
+    //     marker.on('mouseover', () => {
+    //       marker.setOpacity(0.7); // Highlight effect
+    //     });
+
+    //     marker.on('mouseout', () => {
+    //       marker.setOpacity(1); // Reset opacity
+    //     });
+
+    //     marker.on('click', () => {
+    //       selectedLocationFromMap.value = locName;
+    //       indoorSensors.value = locationData.value[locName].indoor;
+    //       outdoorSensors.value = locationData.value[locName].outdoor;
+    //       tempSelectedIndoor.value = indoorSensors.value[0] || 'None';
+    //       tempSelectedOutdoor.value = outdoorSensors.value[0] || 'None';
+    //       showSidePanel.value = true;
+    //     });
+    //   }
+    // };
+
     const initMap = () => {
-      // const map = L.map(mapContainer.value).setView([33.78, -84.4], 10); // feature/add_zoom_adjustment
-      const map = L.map(mapContainer.value);
+      const map = L.map(mapContainer.value).setView([33.78, -84.4], 12);
 
-      const bounds = [];
-
-      for (const locName in locationData.value) {
-        const { latitude, longitude } = locationData.value[locName].coordinates;
-        bounds.push([latitude, longitude]);
-      }
-
-      if (bounds.length > 0) {
-        map.fitBounds(bounds); // Adjusts the view to contain all markers
-      } else {
-        map.setView([33.78, -84.4], 12); // Fallback default view
-      }
-      //end modif - feature/add_zoom_adjustment
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: 'Map data © OpenStreetMap contributors'
       }).addTo(map);
 
-      // Define a custom icon 20250201_add_location_icon
+      // Define the custom icon **before** using it
       const customIcon = L.icon({
-        iconUrl: require('@/assets/location_1024px.png'), // Path to your marker icon
-        iconSize: [24, 24], // Size of the icon
-        iconAnchor: [12, 12], // Anchor point of the icon
-        popupAnchor: [0, -12] // Popup position relative to the icon
+        iconUrl: require('@/assets/location_1024px.png'), // Ensure this file exists
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12]
       });
+
+      const bounds = [];
+      const markerClusterGroup = L.markerClusterGroup();
 
       for (const locName in locationData.value) {
         const { latitude, longitude } = locationData.value[locName].coordinates;
+        bounds.push([latitude, longitude]);
 
-        // const marker = L.circleMarker([latitude, longitude], {
-        //   radius: 8, 
-        //   color: 'blue', 
-        //   fillColor: 'blue', 
-        //   fillOpacity: 0.2, 
-        // }).addTo(map);
-        // marker.on('mouseover', () => {
-        //   marker.setRadius(12);
-        // });
-        // marker.on('mouseout', () => {
-        //   marker.setRadius(8);
-        // });
+        const marker = L.marker([latitude, longitude], { icon: customIcon });
 
-        // Add a marker with the custom icon 2025
-        const marker = L.marker([latitude, longitude], { icon: customIcon }).addTo(map);
-        marker.on('mouseover', () => {
-          marker.setOpacity(0.7); // Highlight effect
-        });
-
-        marker.on('mouseout', () => {
-          marker.setOpacity(1); // Reset opacity
-        });
-
+        marker.on('mouseover', () => marker.setOpacity(0.7));
+        marker.on('mouseout', () => marker.setOpacity(1));
         marker.on('click', () => {
           selectedLocationFromMap.value = locName;
           indoorSensors.value = locationData.value[locName].indoor;
@@ -176,8 +203,19 @@ export default {
           tempSelectedOutdoor.value = outdoorSensors.value[0] || 'None';
           showSidePanel.value = true;
         });
+
+        markerClusterGroup.addLayer(marker);
+      }
+
+      map.addLayer(markerClusterGroup);
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds);
+      } else {
+        map.setView([33.78, -84.4], 12);
       }
     };
+
 
     const applySensorSelection = () => {
       showSidePanel.value = false;
