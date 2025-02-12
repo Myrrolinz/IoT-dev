@@ -114,7 +114,22 @@ export default {
     };
 
     const initMap = () => {
-      const map = L.map(mapContainer.value).setView([33.78, -84.4], 10);
+      // const map = L.map(mapContainer.value).setView([33.78, -84.4], 10); // feature/add_zoom_adjustment
+      const map = L.map(mapContainer.value);
+
+      const bounds = [];
+
+      for (const locName in locationData.value) {
+        const { latitude, longitude } = locationData.value[locName].coordinates;
+        bounds.push([latitude, longitude]);
+      }
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds); // Adjusts the view to contain all markers
+      } else {
+        map.setView([33.78, -84.4], 12); // Fallback default view
+      }
+      //end modif - feature/add_zoom_adjustment
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: 'Map data © OpenStreetMap contributors'
       }).addTo(map);
