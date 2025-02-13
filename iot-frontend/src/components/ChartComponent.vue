@@ -15,6 +15,14 @@ export default {
     location: String,  // Location value e.g., 'location_1'
     indoorOrOutdoor: String // 'indoor' or 'outdoor', optional for non-delta
   },
+  watch: {
+    '$parent.startDate'() {
+      this.initChart();
+    },
+    '$parent.endDate'() {
+      this.initChart();
+    }
+  },
   mounted() {
     this.initChart();
   },
@@ -38,12 +46,17 @@ export default {
         } else {
           // Use /api/data/<location>/<sensor_type>/<indoor_or_outdoor> route
           const indoorOrOutdoor = this.indoorOrOutdoor || 'indoor'; // Default to 'indoor'
-          const response = await axios.get(`/api/data/${location}/${sensorType}/${indoorOrOutdoor}`);
+          const formattedStartDate = new Date(this.$parent.startDate.split('/').reverse().join('-')).toISOString();
+          const formattedEndDate = new Date(new Date(this.$parent.endDate.split('/').reverse().join('-')).setHours(23, 59, 59)).toISOString();
+
+          const response = await axios.get(`/api/data/${location}/${sensorType}/${indoorOrOutdoor}?start_date=${formattedStartDate}&end_date=${formattedEndDate}`);
           data = response.data;
 
           // Get indoor or outdoor data
           seriesData = data.values;
           timestamps = data.timestamps;
+          console.log("ChartComponent timestamps:", timestamps)
+
         }
 
         // Check if data was successfully retrieved
@@ -104,20 +117,18 @@ export default {
 }
 </script>
 
-  
-
-
-
 <style scoped>
-  .chart-container {
-    display: grid;
-    place-items: center; /* 水平和垂直居中 */
-    width: 100%;
-    height: 60vh; /* 让容器占满整个视口高度 */
-  }
-  
-  .chart {
-    width: 600px;
-    height: 400px;
-  }
-  </style>
+.chart-container {
+  display: grid;
+  place-items: center;
+  /* 水平和垂直居中 */
+  width: 100%;
+  height: 60vh;
+  /* 让容器占满整个视口高度 */
+}
+
+.chart {
+  width: 600px;
+  height: 400px;
+}
+</style>

@@ -52,30 +52,12 @@ def fetch_data_from_thingspeak(channel_id, field):
     response = requests.get(url)
     data = response.json()
     feeds = data['feeds']
-
     df = pd.DataFrame(feeds)
     df['created_at'] = pd.to_datetime(df['created_at'], utc=True)
     df['value'] = pd.to_numeric(df[f'field{field}'], errors='coerce')
     df = df.dropna()
     
     return df
-
-def parse_date_range(range_str):
-    now = datetime.now(timezone.utc)  # use UTC time for simplicity
-    if range_str.endswith('d'):
-        days = int(range_str[:-1])
-        start_date = now - timedelta(days=days)
-    elif range_str.endswith('m'):
-        months = int(range_str[:-1])
-        start_date = now - timedelta(days=30 * months)
-    elif range_str.endswith('y'):
-        years = int(range_str[:-1])
-        start_date = now.replace(year=now.year - years)
-    else:
-        # default to 7 days
-        start_date = now - timedelta(days=7)
-    end_date = now
-    return start_date, end_date
 
 def compute_delta(location, field, indoor_sensor_name, outdoor_sensor_name):
     indoor_channel_id = locations[location]['indoor'].get(indoor_sensor_name)
@@ -124,10 +106,24 @@ def get_single_sensor_data(location, sensor_type, indoor_or_outdoor, sensor_name
     field = fields[sensor_type]
     data = fetch_data_from_thingspeak(channel_id, field)
 
-    date_range = request.args.get('range', '7d')
-    start_date, end_date = parse_date_range(date_range)
+    # Parse start_date and end_date from query parameters
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
 
+    if not start_date or not end_date:
+        return jsonify({'error': 'Please provide both start_date and end_date'}), 400
+
+    try:
+        start_date = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
+        end_date = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ).'}), 400
+
+    # Filter the data based on the provided date range
     data = data[(data['created_at'] >= start_date) & (data['created_at'] <= end_date)]
+
+    print(f"Start Date: {start_date}, End Date: {end_date}")
+    print(f"Filtered Data Timestamps: {data['created_at'].tolist()}")
 
     return jsonify({
         'timestamps': data['created_at'].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
@@ -149,22 +145,35 @@ def get_delta(location, sensor_type):
 
     field = fields[sensor_type]
 
+    # Parse start_date and end_date from query parameters
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    if not start_date or not end_date:
+        return jsonify({'error': 'Please provide both start_date and end_date'}), 400
+
+    try:
+        start_date = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
+        end_date = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ).'}), 400
+
     try:
         merged_data = compute_delta(location, field, indoor_sensor_name, outdoor_sensor_name)
+        
+        # Filter the merged_data DataFrame based on the provided date range
+        merged_data = merged_data[(merged_data['created_at'] >= start_date) & (merged_data['created_at'] <= end_date)]
+        print(f"Start Date: {start_date}, End Date: {end_date}")
+        print(f"Filtered Delta Data Timestamps: {merged_data['created_at'].tolist()}")
+
+        return jsonify({
+            'timestamps': merged_data['created_at'].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
+            'indoor_value': merged_data['value_indoor'].tolist(),
+            'outdoor_value': merged_data['value_outdoor'].tolist(),
+            'values': merged_data['delta'].tolist()
+        })   
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
-
-    date_range = request.args.get('range', '7d')
-    start_date, end_date = parse_date_range(date_range)
-
-    merged_data = merged_data[(merged_data['created_at'] >= start_date) & (merged_data['created_at'] <= end_date)]
-
-    return jsonify({
-        'timestamps': merged_data['created_at'].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
-        'indoor_value': merged_data['value_indoor'].tolist(),
-        'outdoor_value': merged_data['value_outdoor'].tolist(),
-        'values': merged_data['delta'].tolist()
-    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
