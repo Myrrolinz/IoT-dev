@@ -2,8 +2,7 @@
   <div id="app">
     <nav>
       <router-link to="/">Home</router-link> |
-      <router-link to="/maps">Map and Charts View</router-link> |
-      <router-link to="/delta">Delta View</router-link>
+      <router-link to="/maps">Map and Charts View</router-link>
     </nav>
     <router-view></router-view>
   </div>
