@@ -1,6 +1,6 @@
 <template>
-  <h1>Sensor Data Charts</h1>
   <div class="container">
+    <h1>Sensor Data Charts</h1>
     <div class="selectors">
       <label for="location-select">Location:</label>
       <select id="location-select" v-model="selectedLocation" @change="() => { updateSensorOptions(); fetchData(); }">
@@ -39,10 +39,19 @@
       </div>
 
       <!-- Range selection -->
-      <label for="range-select">Time Range (days):</label>
+      <!-- <label for="range-select">Time Range (days):</label>
       <select id="range-select" v-model="selectedRangeDays" @change="fetchData">
         <option v-for="d in possibleRanges" :key="d" :value="d">{{ d }} days</option>
-      </select>
+      </select> -->
+      <!-- Time selection -->
+      <div>
+        <label for="start-date">Start Date:</label>
+        <input type="date" id="start-date" v-model="startDate" @change="fetchData">
+      </div>
+      <div>
+        <label for="end-date">End Date:</label>
+        <input type="date" id="end-date" v-model="endDate" @change="fetchData">
+      </div>
     </div>
 
     <div id="chart" style="width: 100%; height: 400px;"></div>
@@ -91,9 +100,13 @@ export default {
     // Delta checkbox
     const showDelta = ref(true); // default show delta
 
-    // Time range selection
+    /* // Time range selection
     const possibleRanges = ref([1, 3, 7, 14, 30, 60]);
-    const selectedRangeDays = ref(7); // default 7 days
+    const selectedRangeDays = ref(7); */
+    // Time selection
+    const startDate = ref(null);
+    const endDate = ref(null);
+
 
     let chart = null;
 
@@ -170,15 +183,31 @@ export default {
         return;
       }
 
+      if (!startDate.value || !endDate.value) {
+        console.warn('Start and end dates are required.');
+        return;
+      }
+      if (new Date(startDate.value) > new Date(endDate.value)) {
+        console.warn('Start date cannot be after end date.');
+        return;
+      }
+
       let timestamps = null;
       const series = [];
 
       const loc = selectedLocation.value;
       const sensorType = selectedSensor.value;
-      const rangeStr = `${selectedRangeDays.value}d`;
+      // const rangeStr = `${selectedRangeDays.value}d`;
+      // Format dates to ISO string
+      const startDateISO = new Date(startDate.value).toISOString();
+      const endDateISO = new Date(endDate.value).toISOString();
 
+      console.log(`Fetching data for location: ${loc}, sensorType: ${sensorType}, startDate: ${startDateISO}, endDate: ${endDateISO}`);
+
+      console.log("Show Delta: ", showDelta.value);
       // If delta is shown, we call the delta endpoint:
       if (showDelta.value) {
+        console.log("showDelta is true");
         // For delta endpoint, we need indoor/outdoor sensor names
         const defaultIndoor = indoorSensorOptions.value[0];
         const defaultOutdoor = outdoorSensorOptions.value[0];
@@ -191,9 +220,13 @@ export default {
         const indoorParam = selectedIndoorSensor.value === 'None' ? defaultIndoor : selectedIndoorSensor.value;
         const outdoorParam = selectedOutdoorSensor.value === 'None' ? defaultOutdoor : selectedOutdoorSensor.value;
 
-        const apiUrl = `/api/delta/${loc}/${sensorType}?indoor_sensor=${indoorParam}&outdoor_sensor=${outdoorParam}&range=${rangeStr}`;
+        // const apiUrl = `/api/delta/${loc}/${sensorType}?indoor_sensor=${indoorParam}&outdoor_sensor=${outdoorParam}&range=${rangeStr}`;
+        const apiUrl = `/api/delta/${loc}/${sensorType}?indoor_sensor=${indoorParam}&outdoor_sensor=${outdoorParam}&start_date=${startDateISO}&end_date=${endDateISO}`;
+        console.log("API URL:", apiUrl);
         try {
+          console.log("indoor try");
           const response = await apiClient.get(apiUrl);
+          console.log("Delta API Response:", response.data);
           const { timestamps: newTimestamps, indoor_value, outdoor_value, values: delta_values } = response.data;
           timestamps = newTimestamps;
 
@@ -230,9 +263,12 @@ export default {
       } else {
         // Delta not shown, so we only show raw indoor/outdoor data if selected
         if (selectedIndoorSensor.value !== 'None') {
-          const indoorUrl = `/api/data/${loc}/${sensorType}/indoor/${selectedIndoorSensor.value}?range=${rangeStr}`;
+          // const indoorUrl = `/api/data/${loc}/${sensorType}/indoor/${selectedIndoorSensor.value}?range=${rangeStr}`;
+          const indoorUrl = `/api/data/${loc}/${sensorType}/indoor/${selectedIndoorSensor.value}?start_date=${startDateISO}&end_date=${endDateISO}`;
+          console.log("indoorURL: ", indoorUrl)
           try {
             const response = await apiClient.get(indoorUrl);
+            console.log("Indoor API Response:", response.data);
             const { timestamps: indoorTimestamps, values: indoorValues } = response.data;
             if (!timestamps) {
               timestamps = indoorTimestamps;
@@ -249,9 +285,12 @@ export default {
         }
 
         if (selectedOutdoorSensor.value !== 'None') {
-          const outdoorUrl = `/api/data/${loc}/${sensorType}/outdoor/${selectedOutdoorSensor.value}?range=${rangeStr}`;
+          // const outdoorUrl = `/api/data/${loc}/${sensorType}/outdoor/${selectedOutdoorSensor.value}?range=${rangeStr}`;
+          const outdoorUrl = `/api/data/${loc}/${sensorType}/outdoor/${selectedOutdoorSensor.value}?start_date=${startDateISO}&end_date=${endDateISO}`;
+          console.log("Outdoor URL:", outdoorUrl);
           try {
             const response = await apiClient.get(outdoorUrl);
+            console.log("Outdoor API Response:", response.data);
             const { timestamps: outdoorTimestamps, values: outdoorValues } = response.data;
             if (!timestamps) {
               timestamps = outdoorTimestamps;
@@ -271,9 +310,53 @@ export default {
       updateChart(timestamps, series);
     };
 
+    // const updateChart = (timestamps, series) => {
+    //   chart.clear();
+    //   const option = {
+    //     tooltip: {
+    //       trigger: 'axis',
+    //     },
+    //     xAxis: {
+    //       type: 'category',
+    //       data: timestamps || [],
+    //       name: 'Time (UTC)',
+    //       nameLocation: 'center',
+    //       nameTextStyle: {
+    //         padding: [35, 0, 0, 0],
+    //       },
+    //     },
+    //     yAxis: {
+    //       type: 'value',
+    //     },
+    //     grid: {
+    //       left: '3%',
+    //       right: '4%',
+    //       bottom: 80,
+    //       containLabel: true,
+    //     },
+    //     dataZoom: [
+    //       {
+    //         type: 'inside',
+    //       },
+    //       {
+    //         type: 'slider',
+    //         bottom: 40,
+    //       },
+    //     ],
+    //     series: series,
+    //   };
+    //   chart.setOption(option);
+    // };
+
     const updateChart = (timestamps, series) => {
-      chart.clear();
+      if (!chart) {
+        initChart(); // Initialize chart if it's not already initialized
+      }
+
       const option = {
+        title: {
+          text: 'Sensor Data',
+        },
         tooltip: {
           trigger: 'axis',
         },
@@ -306,6 +389,7 @@ export default {
         ],
         series: series,
       };
+
       chart.setOption(option);
     };
 
@@ -349,8 +433,10 @@ export default {
       selectedIndoorSensor,
       selectedOutdoorSensor,
       showDelta,
-      possibleRanges,
-      selectedRangeDays,
+      // possibleRanges,
+      // selectedRangeDays,
+      startDate,
+      endDate,
       updateSensorOptions,
       fetchData,
       updateSensorsFromParent
