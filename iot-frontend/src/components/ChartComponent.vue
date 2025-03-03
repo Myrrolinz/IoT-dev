@@ -52,6 +52,9 @@ export default {
           return;
         }
 
+        // Log the fetched data for debugging
+        console.log('Fetched data:', { timestamps, seriesData });
+
         // eCharts configuration
         const option = {
           title: {
@@ -88,7 +91,8 @@ export default {
               name: this.title,
               type: 'line',
               data: seriesData,
-              smooth: true
+              smooth: true,
+              connectNulls: false      // Do not connect points with NaNs
             }
           ]
         };
@@ -96,6 +100,9 @@ export default {
         // Initialize or update the chart
         const chartInstance = echarts.init(this.$refs.chart);
         chartInstance.setOption(option);
+
+        // Log chart initialization for debugging
+        console.log('Chart initialized:', chartInstance);
       } catch (error) {
         console.error('Error fetching data for chart:', error);
       }
@@ -104,20 +111,20 @@ export default {
 }
 </script>
 
-  
-
-
-
 <style scoped>
-  .chart-container {
-    display: grid;
-    place-items: center; /* 水平和垂直居中 */
-    width: 100%;
-    height: 60vh; /* 让容器占满整个视口高度 */
-  }
-  
-  .chart {
-    width: 600px;
-    height: 400px;
-  }
-  </style>
+.chart-container {
+  display: grid;
+  place-items: center;
+  /* Center horizontally and vertically */
+  width: 100%;
+  height: 60vh;
+  /* Make the container occupy the entire viewport height */
+}
+
+.chart {
+  width: 100%;
+  /* Make the chart responsive */
+  height: 100%;
+  /* Make the chart responsive */
+}
+</style>w
